@@ -1,10 +1,14 @@
-// Copyright © 2014 Jay R. Wren <jrwren@xmtp.net>.
+// Copyright © 2014-2015 Jay R. Wren <jrwren@xmtp.net>.
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
 
 #include<string>
 #include<sstream>
+#include<iostream>
+#include<curlpp/cURLpp.hpp>
+#include<curlpp/Easy.hpp>
+#include<curlpp/Options.hpp>
 #include<boost/program_options.hpp>
 #include"cpptoml.h"
 #include<cstdlib>
@@ -170,17 +174,19 @@ int main(int argc, char** argv) {
         return err;
     }
 
-    dnsimple::client *client = new dnsimple::client(user, token);
+    //dnsimple::client *client = make_unique( dnsimple::client(user, token) );
+    dnsimple::client *client = new dnsimple::client(user, token) ;
 
     if (vm.count("list")) {
         auto domains = client->get_domains();
-        for(auto domain = domains.begin();
+/*        for(auto domain = domains.begin();
                 domain != domains.end();
-                domain++) {
+                domain++) {*/
+        for (auto domain : domains) {
             if (verbose) {
-                cout << domain->name << " " << domain->expires_on << endl;
+                cout << domain.name << " " << domain.expires_on << endl;
             } else {
-                cout << domain->name << endl;
+                cout << domain.name << endl;
             }
         }
     }
@@ -212,6 +218,35 @@ int main(int argc, char** argv) {
 //            cout << records << endl;
         }
     }
+    try {
+        cURLpp::Cleanup cleanup;
+        cout << "cleanup" << endl;
+        ostringstream os;
+        //os << cURLpp::Options::Url("http://www.yahoo.com");
+        cURLpp::Easy request;
+        cout << "request" << endl;
+
+        cURLpp::Options::Url myUrl("http://xmtp.net");
+        cout << "url" << endl;
+        request.setOpt(myUrl);
+        request.setOpt(new cURLpp::Options::Verbose(true));
+        cout << "setopt" << endl;
+        request.perform();
+        cout << "perfed" << endl;
+
+        cout << os.str();
+        cout << "request:" << endl;
+        cout << request;
+    }
+    catch( curlpp::RuntimeError &e )
+    {
+        std::cout << e.what() << std::endl;
+        cout << curlpp::libcurlVersion();
+    }
+	catch( curlpp::LogicError &e )
+	{
+		std::cout << e.what() << std::endl;
+	}
 
     return 0;
 }

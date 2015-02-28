@@ -1,4 +1,4 @@
-// Copyright © 2014 Jay R. Wren <jrwren@xmtp.net>.
+// Copyright © 2014-2015 Jay R. Wren <jrwren@xmtp.net>.
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
@@ -80,44 +80,42 @@ namespace dnsimple {
                 return domains;
             }
             int i = 0;
-            for (auto item = root.begin();
+/*            for (auto item = root.begin();
                     item!=root.end();
-                    item++) {
+                    item++) { */
+            int size = root.size();
+            for (int index = 0 ; index < size ; ++index) {
+                auto item = root[index];
                 std::cout << i++ << ": has name:";
-                std::cout << (*item).isMember("name") << " ";
-              auto members = item.getMemberNames()
-                for (auto member = (*item).getMemberNames().begin();
-                        member != std::end((*item).getMemberNames());
+                std::cout << item.isMember("name") << " ";
+                auto members = item.getMemberNames();
+                for (auto member = members.begin();
+                        member != std::end(members);
                         member++)
                     std::cout << *member << ", " ;
                 std::cout << std::endl;
                 domain d;
-                d.id = (*item)["id"].asInt();
-                d.user_id = (*item)["user_id"].asInt();
-                d.registrant_id = (*item)["registrant_id"].asInt();
-                d.name = (*item)["name"].asString();
-                d.unicode_name = (*item)["unicode_name"].asString();
-                d.token = (*item)["token"].asString();
-                d.state = (*item)["state"].asString();
-                d.language = (*item)["language"].asString();
-                d.lockable = (*item)["lockable"].asBool();
-                d.auto_renew = (*item)["auto_renew"].asBool();
-                d.whois_protected = (*item)["whois_protected"].asBool();
-                d.record_count = (*item)["record_count"].asInt();
-                d.service_count = (*item)["service_count"].asInt();
-                d.expires_on = (*item)["expires_on"].asString();
-                d.created_at = (*item)["created_at"].asString();
-                d.updated_at = (*item)["updated_at"].asString();
-                d.id = (*item)["id"].asInt();
+                d.id = item["id"].asInt();
+                d.user_id = item["user_id"].asInt();
+                d.registrant_id = item["registrant_id"].asInt();
+                d.name = item["name"].asString();
+                d.unicode_name = item["unicode_name"].asString();
+                d.token = item["token"].asString();
+                d.state = item["state"].asString();
+                d.language = item["language"].asString();
+                d.lockable = item["lockable"].asBool();
+                d.auto_renew = item["auto_renew"].asBool();
+                d.whois_protected = item["whois_protected"].asBool();
+                d.record_count = item["record_count"].asInt();
+                d.service_count = item["service_count"].asInt();
+                d.expires_on = item["expires_on"].asString();
+                d.created_at = item["created_at"].asString();
+                d.updated_at = item["updated_at"].asString();
+                d.id = item["id"].asInt();
                 std::cout << d.name << std::endl;
                 domains.push_back(d);
             }
 
-        /*    cURLpp::Easy request;
-
-            request.setOpt(myUrl);
-            request.perform();
-        */
             return domains;
         }
         std::tuple<std::vector<record>, int> get_records(std::string domain) {
