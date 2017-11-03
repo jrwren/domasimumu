@@ -11,52 +11,49 @@
 #include <json/json.h>
 #include "curlpp11.hpp"
 
-template <typename T, typename... Args>
-std::unique_ptr<T> make_unique(Args &&... args) {
-  return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
+using namespace std;
 
 namespace dnsimple {
 class record {
 public:
-  std::string id;
-  std::string name;
-  std::string record_type;
-  std::string content;
+  string id;
+  string name;
+  string record_type;
+  string content;
 };
 class domain {
 public:
   int id;
   int user_id;
   int registrant_id;
-  std::string name;
-  std::string unicode_name;
-  std::string token;
-  std::string state;
-  std::string language;
+  string name;
+  string unicode_name;
+  string token;
+  string state;
+  string language;
   bool lockable;
   bool auto_renew;
   bool whois_protected;
   int record_count;
   int service_count;
-  std::string expires_on;
-  std::string created_at;
-  std::string updated_at;
+  string expires_on;
+  string created_at;
+  string updated_at;
 };
 class change_record {
 public:
-  std::string name;
-  std::string value;
-  std::string type;
-  std::string ttl;
+  string name;
+  string value;
+  string type;
+  string ttl;
 };
 class client {
 public:
-  client(std::string email, std::string token)
-      : token{std::move(token)}, email{std::move(email)},
-        url{"https://api.dnsimple.com/v1"} {}
-  std::string get(std::string endpoint) {
-    std::string results;
+  client(string email, string token)
+      : token(token), email(email),
+        url{"https://api.dnsimple.com/v1"} { }
+  string get(string endpoint) const {
+    string results;
     curl::Easy c;
     c.url((url + endpoint).c_str())
         .header(("X-DNSimple-Token: " + email + ":" + token).c_str())
@@ -64,40 +61,39 @@ public:
         .perform(results);
     return results;
   }
-  std::vector<domain> get_domains() {
-    std::vector<domain> domains;
-    std::string results = get("/domains");
-    //            std::cout << results << std::endl;
+  vector<domain> get_domains() const {
+    vector<domain> domains;
+    string results = get("/domains");
+    //            cout << results << endl;
 
     Json::Value root;
     Json::Reader reader;
     bool parsingSuccessful = reader.parse(results, root);
     if (!parsingSuccessful) {
-      std::cerr << "Failed to parse response\n"
+      cerr << "Failed to parse response\n"
                 << reader.getFormattedErrorMessages();
       return domains;
     }
     if (root.isObject()) {
-      std::cerr << "Unexpected response:" << results << std::endl;
+      cerr << "Unexpected response:" << results << endl;
       return domains;
     }
-    int i = 0;
     /*            for (auto item = root.begin();
                         item!=root.end();
                         item++) { */
     int size = root.size();
-    std::cout << "root size: " << size << std::endl;
+    cout << "root size: " << size << endl;
     for (int index = 0; index < size; ++index) {
       auto item = root[index]["domain"];
       auto members = item.getMemberNames();
-      /*                std::cout << i++ << ": has name:";
-                      std::cout << item.isMember("domain") << " ";
-                      std::cout << item["domain"] << " ";
+      /*                cout << i++ << ": has name:";
+                      cout << item.isMember("domain") << " ";
+                      cout << item["domain"] << " ";
                       for (auto member = members.begin();
-                              member != std::end(members);
+                              member != end(members);
                               member++)
-                          std::cout << *member << ", " ;
-                      std::cout << std::endl;*/
+                          cout << *member << ", " ;
+                      cout << endl;*/
       domain d;
       d.id = item["id"].asInt();
       d.user_id = item["user_id"].asInt();
@@ -121,27 +117,27 @@ public:
 
     return domains;
   }
-  std::tuple<std::vector<record>, int> get_records(std::string domain) {
-    std::vector<record> records;
-    std::ostringstream os;
+  tuple<vector<record>, int> get_records(string domain) const {
+    vector<record> records;
+    ostringstream os;
     // os << cURLpp::Options::Url(url + "/domains/" + domain + "/records");
-    std::cout << os.str();
-    return std::make_tuple(records, 0);
+    cout << os.str();
+    return make_tuple(records, 0);
   }
-  std::tuple<std::string, int> create_record(std::string domain,
-                                             change_record *rchange) {
-    std::string id;
-    return std::make_tuple(id, 0);
+  tuple<string, int> create_record(string domain,
+                                             change_record *rchange) const {
+    string id;
+    return make_tuple(id, 0);
   }
-  std::tuple<std::string, int> update_record(std::string domain,
-                                             change_record *change) {
-    std::string id;
-    return std::make_tuple(id, 0);
+  tuple<string, int> update_record(string domain,
+                                             change_record *change) const {
+    string id;
+    return make_tuple(id, 0);
   }
-  int destroy_record(std::string domain, std::string id) { return 0; }
-  std::string token;
-  std::string email;
-  std::string url;
+  int destroy_record(string domain, string id) const { return 0; }
+  const string token;
+  const string email;
+  const string url;
 };
 }
 

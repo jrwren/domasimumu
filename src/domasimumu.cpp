@@ -15,25 +15,13 @@
 
 using namespace std;
 
+static bool verbose = false;
+
 class config {
 public:
   string user;
   string token;
 };
-
-int decode_config(cpptoml::toml_group g, config *c) {
-  if (g.contains("user"))
-    // c->user = g.get("user")->as<std::string>()->value();
-    c->user = *g.get_as<string>("user");
-  else
-    return 2;
-  if (g.contains("token"))
-    // c->token = g.get("token")->as<std::string>()->value();
-    c->token = *g.get_as<string>("token");
-  else
-    return 3;
-  return 0;
-}
 
 int get_creds(string *user, string *token) {
   char *conf_env = getenv("DOMASIMU_CONF");
@@ -45,18 +33,23 @@ int get_creds(string *user, string *token) {
     configFileName =
         boost::filesystem::absolute(".domasimurc", getenv("HOME")).string();
   }
-  cpptoml::toml_group g;
-  try {
-    g = cpptoml::parse_file(configFileName);
-  } catch (const cpptoml::toml_parse_exception &e) {
-    std::cerr << "Failed to parse " << configFileName << ": " << e.what()
-              << std::endl;
-    return 1;
-  }
   config c;
-  int err = decode_config(g, &c);
-  if (err != 0) {
-    return err;
+  try {
+    auto g = cpptoml::parse_file(configFileName);
+
+    if (g->contains("user"))
+      // c->user = g.get("user")->as<std::string>()->value();
+      c.user = *g->get_as<string>("user");
+    else
+      return 2;
+    if (g->contains("token"))
+      // c->token = g.get("token")->as<std::string>()->value();
+      c.token = *g->get_as<string>("token");
+    else
+      return 3;
+  } catch (const cpptoml::parse_exception &e) {
+    cerr << "Failed to parse " << configFileName << ": " << e.what() << endl;
+    return 1;
   }
   *user = c.user;
   *token = c.token;
@@ -64,9 +57,9 @@ int get_creds(string *user, string *token) {
 }
 
 tuple<string, int>
-get_record_id_by_value(dnsimple::client &client, string domain,
+get_record_id_by_value(dnsimple::client const &client, string domain,
                        dnsimple::change_record *change_record) {
-  auto resp = client->get_records(domain);
+  auto resp = client.get_records(domain);
   auto records = get<0>(resp);
   auto err = get<1>(resp);
   string id;
@@ -84,7 +77,7 @@ get_record_id_by_value(dnsimple::client &client, string domain,
   return make_tuple(id, 0);
 }
 
-tuple<string, int> create_or_update(unique_ptr<dnsimple::client> const &client,
+tuple<string, int> create_or_update(dnsimple::client const &client,
                                     string message) {
   string domain;
   istringstream msg_stream(message);
@@ -95,15 +88,15 @@ tuple<string, int> create_or_update(unique_ptr<dnsimple::client> const &client,
   msg_stream >> new_record.value >> new_record.ttl;
   string id;
   int err;
-  tie(id, err) = get_record_id_by_value(*client, domain, &change_record);
+  tie(id, err) = get_record_id_by_value(client, domain, &change_record);
   if (err != 0) {
     return tuple<string, int>(0, err);
   }
   string resp_id;
   if (id.empty()) {
-    tie(resp_id, err) = client->create_record(domain, &new_record);
+    tie(resp_id, err) = client.create_record(domain, &new_record);
   } else {
-    tie(resp_id, err) = client->update_record(domain, &new_record);
+    tie(resp_id, err) = client.update_record(domain, &new_record);
   }
   if (err != 0) {
     return tuple<string, int>(0, err);
@@ -130,6 +123,12 @@ tuple<string, int> delete_record(unique_ptr<dnsimple::client> const &client,
   err = client->destroy_record(domain, id);
   return tuple<string, int>(id, 0);
 }
+/*
+template<typename T, typename ...Args>
+std::unique_ptr<T> make_unique( Args&& ...args )
+{
+    return std::unique_ptr<T>( new T( std::forward<Args>(args)... ) );
+}*/
 
 int main(int argc, char **argv) {
   curl::GlobalSentry curl;
@@ -153,13 +152,13 @@ int main(int argc, char **argv) {
   notify(vm);
 
   if (vm.count("help")) {
-    cout << desc << ".domasimumu config file example:" << endl;
+    cout << desc << ".domasimurc config file example:" << endl;
     return 0;
   }
 
-  bool verbose = false;
   if (vm.count("verbose")) {
     verbose = true;
+    cerr << "verbose mode enabled" << endl;
   }
 
   string user, token;
@@ -169,9 +168,8 @@ int main(int argc, char **argv) {
     return err;
   }
 
-  // auto client = make_unique( dnsimple::client(user, token) );
-  // dnsimple::client *client = new dnsimple::client(user, token) ;
-  std::unique_ptr<dnsimple::client> client(new dnsimple::client(user, token));
+  // auto client = make_unique<dnsimple::client>(user, token);
+  unique_ptr<dnsimple::client> client(new dnsimple::client(user, token));
 
   if (vm.count("list")) {
     auto domains = client->get_domains();
@@ -189,7 +187,7 @@ int main(int argc, char **argv) {
   if (vm.count("update")) {
     string id;
     int err;
-    tie(id, err) = create_or_update(client, vm["update"].as<string>());
+    tie(id, err) = create_or_update(*client, vm["update"].as<string>());
     if (err) {
       cerr << "could not create or update:" << err << endl;
     } else {
