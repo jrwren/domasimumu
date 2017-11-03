@@ -6,10 +6,8 @@
 #include<string>
 #include<sstream>
 #include<iostream>
-#include<curlpp/cURLpp.hpp>
-#include<curlpp/Easy.hpp>
-#include<curlpp/Options.hpp>
 #include<boost/program_options.hpp>
+#include"curlpp11.hpp"
 #include"cpptoml.h"
 #include<cstdlib>
 #include<boost/filesystem.hpp>
@@ -70,7 +68,7 @@ int get_creds(string *user, string *token) {
     return 0;
 }
 
-tuple<string, int> get_record_id_by_value(dnsimple:: client *client, string domain, dnsimple::change_record *change_record) {
+tuple<string, int> get_record_id_by_value(unique_ptr<dnsimple::client> const &client, string domain, dnsimple::change_record *change_record) {
     auto resp = client->get_records(domain);
     auto records = get<0>(resp);
     auto err = get<1>(resp);
@@ -91,7 +89,7 @@ tuple<string, int> get_record_id_by_value(dnsimple:: client *client, string doma
     return make_tuple(id, 0);
 }
 
-tuple<string, int> create_or_update(dnsimple::client *client, string message) {
+tuple<string, int> create_or_update(unique_ptr<dnsimple::client> const &client, string message) {
     string domain;
     istringstream msg_stream(message);
     dnsimple::change_record change_record;
@@ -108,7 +106,7 @@ tuple<string, int> create_or_update(dnsimple::client *client, string message) {
     if (id.empty()) {
         tie(resp_id, err) = client->create_record(domain, &new_record);
     } else {
-        tie(resp_id, err) = client->create_record(domain, &new_record);
+        tie(resp_id, err) = client->update_record(domain, &new_record);
     }
     if (err != 0) {
         return tuple<string, int>(0, err);
@@ -116,7 +114,7 @@ tuple<string, int> create_or_update(dnsimple::client *client, string message) {
     return tuple<string, int>(resp_id, 0);
 }
 
-tuple<string, int> delete_record(dnsimple::client *client, string message) {
+tuple<string, int> delete_record(unique_ptr<dnsimple::client> const &client, string message) {
     string domain;
     istringstream msg_stream(message);
     dnsimple::change_record change_record;
@@ -135,6 +133,7 @@ tuple<string, int> delete_record(dnsimple::client *client, string message) {
 }
 
 int main(int argc, char** argv) {
+    curl::GlobalSentry curl;
     namespace po = boost::program_options;
     po::options_description desc("Options");
     desc.add_options()
@@ -174,8 +173,9 @@ int main(int argc, char** argv) {
         return err;
     }
 
-    //dnsimple::client *client = make_unique( dnsimple::client(user, token) );
-    dnsimple::client *client = new dnsimple::client(user, token) ;
+    //auto client = make_unique( dnsimple::client(user, token) );
+    //dnsimple::client *client = new dnsimple::client(user, token) ;
+    std::unique_ptr<dnsimple::client> client(new dnsimple::client(user, token));
 
     if (vm.count("list")) {
         auto domains = client->get_domains();
@@ -218,35 +218,5 @@ int main(int argc, char** argv) {
 //            cout << records << endl;
         }
     }
-    try {
-        cURLpp::Cleanup cleanup;
-        cout << "cleanup" << endl;
-        ostringstream os;
-        //os << cURLpp::Options::Url("http://www.yahoo.com");
-        cURLpp::Easy request;
-        cout << "request" << endl;
-
-        cURLpp::Options::Url myUrl("http://xmtp.net");
-        cout << "url" << endl;
-        request.setOpt(myUrl);
-        request.setOpt(new cURLpp::Options::Verbose(true));
-        cout << "setopt" << endl;
-        request.perform();
-        cout << "perfed" << endl;
-
-        cout << os.str();
-        cout << "request:" << endl;
-        cout << request;
-    }
-    catch( curlpp::RuntimeError &e )
-    {
-        std::cout << e.what() << std::endl;
-        cout << curlpp::libcurlVersion();
-    }
-	catch( curlpp::LogicError &e )
-	{
-		std::cout << e.what() << std::endl;
-	}
-
     return 0;
 }

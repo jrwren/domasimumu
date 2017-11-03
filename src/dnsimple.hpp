@@ -9,9 +9,13 @@
 #include<iostream>
 #include<string>
 #include<json/json.h>
-#include<curlpp/cURLpp.hpp>
-#include<curlpp/Easy.hpp>
-#include<curlpp/Options.hpp>
+#include"curlpp11.hpp"
+
+template<typename T, typename ...Args>
+std::unique_ptr<T> make_unique( Args&& ...args )
+{
+    return std::unique_ptr<T>( new T( std::forward<Args>(args)... ) );
+}
 
 namespace dnsimple {
     class record {
@@ -55,28 +59,30 @@ namespace dnsimple {
             url{"https://api.dnsimple.com/v1"}
         {
         }
+        std::string get(std::string endpoint) {
+            std::string results;
+            curl::Easy c;
+            c.url((url + endpoint).c_str())
+                .header(("X-DNSimple-Token: " + email + ":" + token).c_str())
+                .header("Accept: application/json")
+                .perform(results);
+            return results;
+        }
         std::vector<domain> get_domains() {
             std::vector<domain> domains;
-            std::stringstream ss;
-            cURLpp::Easy request;
-            request.setOpt(cURLpp::Options::Url(url + "/domains"));
-            std::list<std::string> header;
-            header.push_back("X-DNSimple-Token: " + email + ":" + token);
-            header.push_back("Accept: application/json");
-            request.setOpt(new curlpp::options::HttpHeader(header));
-            ss << request;
-            std::cout << ss.str() << std::endl;
+            std::string results = get("/domains");
+//            std::cout << results << std::endl;
 
             Json::Value root;
             Json::Reader reader;
-            bool parsingSuccessful = reader.parse(ss.str(), root);
+            bool parsingSuccessful = reader.parse(results, root);
             if (!parsingSuccessful) {
                 std::cerr << "Failed to parse response\n"
                     << reader.getFormattedErrorMessages();
                 return domains;
             }
             if (root.isObject()) {
-                std::cerr << "Unexpected response:" << ss.str() << std::endl;
+                std::cerr << "Unexpected response:" << results << std::endl;
                 return domains;
             }
             int i = 0;
@@ -84,16 +90,18 @@ namespace dnsimple {
                     item!=root.end();
                     item++) { */
             int size = root.size();
+            std:: cout << "root size: " << size << std::endl;
             for (int index = 0 ; index < size ; ++index) {
-                auto item = root[index];
-                std::cout << i++ << ": has name:";
-                std::cout << item.isMember("name") << " ";
+                auto item = root[index]["domain"];
                 auto members = item.getMemberNames();
+/*                std::cout << i++ << ": has name:";
+                std::cout << item.isMember("domain") << " ";
+                std::cout << item["domain"] << " ";
                 for (auto member = members.begin();
                         member != std::end(members);
                         member++)
                     std::cout << *member << ", " ;
-                std::cout << std::endl;
+                std::cout << std::endl;*/
                 domain d;
                 d.id = item["id"].asInt();
                 d.user_id = item["user_id"].asInt();
@@ -112,7 +120,6 @@ namespace dnsimple {
                 d.created_at = item["created_at"].asString();
                 d.updated_at = item["updated_at"].asString();
                 d.id = item["id"].asInt();
-                std::cout << d.name << std::endl;
                 domains.push_back(d);
             }
 
@@ -121,7 +128,7 @@ namespace dnsimple {
         std::tuple<std::vector<record>, int> get_records(std::string domain) {
             std::vector<record> records;
             std::ostringstream os;
-            os << cURLpp::Options::Url(url + "/domains/" + domain + "/records");
+            //os << cURLpp::Options::Url(url + "/domains/" + domain + "/records");
             std::cout << os.str();
             return std::make_tuple(records, 0);
         }

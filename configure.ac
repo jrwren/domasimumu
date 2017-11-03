@@ -3,9 +3,9 @@ AC_INIT([domasimumu], [0.0.0], [jrwren@xmtp.net])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 AC_PROG_CXX
 
-AC_CHECK_HEADERS([curlpp/cURLpp.hpp curlpp/Options.hpp boost/program_options.hpp])
+AC_CHECK_HEADERS([boost/program_options.hpp])
 
-AC_SEARCH_LIBS([curl], [curlpp], [boost_program_options])
+AC_SEARCH_LIBS([curl], [boost_program_options])
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile])
